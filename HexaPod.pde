@@ -1,18 +1,18 @@
-final static float kTBL_LEG_SIGN[][] = {
-    // x  y
-    {  1, 1 }, 
-    {  1, 0 }, 
-    {  1, -1 }, 
-    { -1, -1 }, 
-    { -1, 0 }, 
-    { -1, 1 }
-};
-
 final color kCOLOR_BONE  = color(40, 200, 110);
 final color kCOLOR_JOINT = color(255, 255, 255);
 final color kCOLOR_BODY  = color(50, 150, 220);
 final color kCOLOR_HEAD  = color(255, 0, 0);
 final float kLEG_WIDTH   = 5.0f;
+
+/*
+             TOP VIEW
+               front
+             ---------
+  135deg    / 6     1 \         45 deg
+ -180deg    | 5  +  2 | right    0 deg
+ -135deg    \ 4     3 /        -45 deg
+             ---------
+*/
 
 class Leg {
     float _coxaLength;
@@ -22,12 +22,14 @@ class Leg {
     PVector _vOffFromCenter = new PVector();
     PVector _vInitPos       = new PVector();
     PVector _vPos           = new PVector();
-
+    float  _fCoxaOffset;    
+    
     float _angleCoxa;
     float _angleFemur;
     float _angleTibia;
 
     int   _pos;
+    boolean _isDebug;
 
     float fixAngle(float angle) {
         if (angle < -180) {
@@ -54,40 +56,60 @@ class Leg {
         return round(v * 100.0f) / 100.0f;
     }
 
+    void enableDebug(boolean en) { 
+        _isDebug = en; 
+    }
+    
+    boolean isDebugEnabled() {
+        return _isDebug;
+    }
+
     Leg(int pos, float bodyFrontWidth, float bodyHeight, float bodyMiddleWidth, 
         float coxaLength, float femurLength, float tibiaLength) {
-        _pos = pos;
-        _coxaLength    = coxaLength;
-        _femurLength   = femurLength;
-        _tibiaLength   = tibiaLength;
+        _pos         = pos;
+        _isDebug     = false;
+        _coxaLength  = coxaLength;
+        _femurLength = femurLength;
+        _tibiaLength = tibiaLength;
 
-        float angle = getCoxaAngle();
+        int   signY;
+        int   signX = (pos < 3) ? 1 : -1;
         float offsetX;
         float offsetY;
-
-        if (pos == 1 || pos == 4) {
+        
+        if (_pos < 3) {
+            _fCoxaOffset = 45.0f - (_pos * 45.0f);
+        } else {
+            _fCoxaOffset = -90.0f - ((_pos - 2) * 45.0f);
+        }
+        _fCoxaOffset = fixAngle(_fCoxaOffset);
+        if (_pos == 1 || _pos == 4) {
             offsetX = bodyMiddleWidth / 2;
             offsetY = 0;
+            signY   = 0;
         } else {
             offsetX = bodyFrontWidth  / 2;
             offsetY = bodyHeight / 2;
+            signY   = (_pos == 0 || _pos == 5) ? 1 : -1;
         }
-        _vOffFromCenter.x = kTBL_LEG_SIGN[pos][0] * offsetX;
-        _vOffFromCenter.y = kTBL_LEG_SIGN[pos][1] * offsetY;
+        _vOffFromCenter.x = signX * offsetX;
+        _vOffFromCenter.y = signY * offsetY;
         _vOffFromCenter.z = tibiaLength;
 
-        _vInitPos.x = roundUp(cos(radians(angle)) * (_coxaLength + _femurLength));
-        _vInitPos.y = roundUp(sin(radians(angle)) * (_coxaLength + _femurLength));
+        _vInitPos.x = roundUp(cos(radians(_fCoxaOffset)) * (_coxaLength + _femurLength));
+        _vInitPos.y = roundUp(sin(radians(_fCoxaOffset)) * (_coxaLength + _femurLength));
         _vInitPos.z = roundUp(tibiaLength);
 
         _vPos.set(_vInitPos);
-        println(String.format("init   leg:%d, angle:%6.1f, off from center (%6.1f, %6.1f)", pos, 
-            angle, _vOffFromCenter.x, _vOffFromCenter.y));
-        println(String.format("init   leg:%d, %6.1f, %6.1f, %6.1f", pos, 
-            _vPos.x, _vPos.y, _vPos.z));
+        if (_isDebug) {
+            println(String.format("init   leg:%d, angle:%6.1f, off from center (%6.1f, %6.1f)", pos, 
+                _fCoxaOffset, _vOffFromCenter.x, _vOffFromCenter.y));
+            println(String.format("init   leg:%d, %6.1f, %6.1f, %6.1f", pos, 
+                _vPos.x, _vPos.y, _vPos.z));
+        }
     }
 
-    void bodyIK(PVector vMov, PVector vRot) {
+    PVector bodyIK(PVector vMov, PVector vRot) {
         // body ik
         float totX    = _vInitPos.x + _vOffFromCenter.x + vMov.x;
         float totY    = _vInitPos.y + _vOffFromCenter.y + vMov.y;
@@ -105,37 +127,54 @@ class Leg {
         float pitchZ = tan(radians(vRot.x)) * totY;
         float bodyIKZ = roundUp(rollZ + pitchZ);
 
-        println(String.format("totxy  leg:%d, %6.1f, %6.1f, dist:%6.1f, deg:%6.1f", _pos, totX, totY, dist, degrees(alpha_1)));
-        println(String.format("bodyik leg:%d, %6.1f, %6.1f, %6.1f", _pos, bodyIKX, bodyIKY, bodyIKZ));
+        //float rot = radians(yaw);
+        //bodyIKX = bodyIKX * cos(rot) - bodyIKY * sin(rot);
+        //bodyIKY = bodyIKX * sin(rot) + bodyIKY * cos(rot);
 
-        // leg ik
+        //println(String.format("totxy  leg:%d, %6.1f, %6.1f, dist:%6.1f, deg:%6.1f", _pos, totX, totY, dist, degrees(alpha_1)));
+        //println(String.format("bodyik leg:%d, %6.1f, %6.1f, %6.1f", _pos, bodyIKX, bodyIKY, bodyIKZ));
+
         _vPos.set(_vInitPos.x + vMov.x + bodyIKX, _vInitPos.y + vMov.y + bodyIKY, _vInitPos.z + vMov.z - bodyIKZ);
-        println(String.format("newpos leg:%d, %6.1f, %6.1f, %6.1f", _pos, _vPos.x, _vPos.y, _vPos.z));
+        
+        if (_isDebug) {
+            println(String.format("newpos leg:%d, %6.1f, %6.1f, %6.1f", _pos, _vPos.x, _vPos.y, _vPos.z));
+        }
+        
+        return _vPos;
     }
 
     void legIK(PVector tgt) {
-        float L1      = sqrt(sq(tgt.x) + sq(tgt.y));            // coxafeetdist
-        float L       = sqrt(sq(L1 - _coxaLength) + sq(tgt.z));   // iksw 
-        float a1      = acos(tgt.z / L); //atan((L1 - _coxaLength) / tgt.z);
-        float a2      = acos((sq(_tibiaLength) - sq(_femurLength) - sq(L)) / (-2 * _femurLength * L));
-        float angleTibia = acos((sq(L) - sq(_tibiaLength) - sq(_femurLength)) / (-2 * _femurLength * _tibiaLength));
+        float distFoot   = sqrt(sq(tgt.x) + sq(tgt.y));
+        float diagonal   = sqrt(sq(distFoot - _coxaLength) + sq(tgt.z)); 
+        float a1         = acos(tgt.z / diagonal); //atan((distFoot - _coxaLength) / tgt.z);
+        float a2         = acos((sq(_tibiaLength) - sq(_femurLength) - sq(diagonal)) / (-2 * _femurLength * diagonal));
+        float angleTibia = acos((sq(diagonal) - sq(_tibiaLength) - sq(_femurLength)) / (-2 * _femurLength * _tibiaLength));
 
         float ac = degrees(atan2(tgt.y, tgt.x));
         float af = degrees(a1 + a2);
         float at = degrees(angleTibia);
-        
-        _angleCoxa  = fixAngle(ac);         // coxa location angle base
+
+        if (Float.isNaN(ac) || Float.isNaN(af) || Float.isNaN(at)) {
+            println(String.format("ERROR  leg:%d, %6.1f, %6.1f, %6.1f\n", _pos, ac, af, at));            
+            return;
+        }
+
+        _angleCoxa  = fixAngle((ac - _fCoxaOffset));    // zero base
+        //_angleCoxa  = fixAngle((ac - _fCoxaOffset) * (_pos < 3 ? -1 : 1));  // zero base for servo
         _angleFemur = -fixAngle(90 - af);    // zero base
         _angleTibia = -fixAngle(90 - at);    // zero base
-        println(String.format("angle  leg:%d, %6.1f, %6.1f, %6.1f\n", _pos, _angleCoxa, _angleFemur, _angleTibia));
+
+        if (_isDebug) {
+            println(String.format("angle  leg:%d, %6.1f, %6.1f, %6.1f\n", _pos, _angleCoxa, _angleFemur, _angleTibia));
+        }
     }
 
     void move(PVector vMov, PVector vRot) {
-        bodyIK(vMov, vRot);
-        legIK(_vPos);
+        PVector tgt = bodyIK(vMov, vRot);
+        legIK(tgt);
     }
 
-
+/*
     void moveBody(PVector vMov, PVector vRot) {
         println(String.format("pos    leg:%d, %6.1f, %6.1f, %6.1f", _pos, _vPos.x, _vPos.y, _vPos.z));
 
@@ -156,6 +195,7 @@ class Leg {
 
         legIK(tgt);
     }
+*/
 
     private void jointX(float x, float y, float z, float a, color c) {
         translate(x, y, z);
@@ -179,7 +219,7 @@ class Leg {
         //
 
         // hip
-        jointZ(_vOffFromCenter.x, -_vOffFromCenter.y, _vOffFromCenter.z, -90 - _angleCoxa, 
+        jointZ(_vOffFromCenter.x, -_vOffFromCenter.y, _vOffFromCenter.z, -90 - (_angleCoxa + _fCoxaOffset), 
                (_pos == 0 || _pos == 5) ? kCOLOR_HEAD : kCOLOR_JOINT);
         translate(0, _coxaLength / 2, 0);
         fill(kCOLOR_BONE);
@@ -209,21 +249,25 @@ class HexaPod {
     PVector   _vMov;
     PVector   _vRot;    // x-> pitch, y->roll, z->yaw
     Gait      _gait;
+    boolean   _isWalk;
 
-    int       _debug = 0;
-    int       _debug_legs = (_debug == 0) ? 6 : 1;
+    int       _debugLegMask = 0x01;
 
     HexaPod(float bodyFrontWidth, float bodyHeight, float bodyMiddleWidth, float coxaLen, float femurLen, float tibiaLen) {
         _legs      = new Leg[6];
         _vBodyPos  = new PVector(0, 0, 0);
         _vMov      = new PVector(0, 0, 0);
         _vRot      = new PVector(0, 0, 0);
+        _debugLegMask = (1 << 3);
 
+        int mask;
         for (int i = 0; i < _legs.length; i++) {
+            mask = 1 << i;
             _legs[i] = new Leg(i, bodyFrontWidth, bodyHeight, bodyMiddleWidth, coxaLen, femurLen, tibiaLen);
+            _legs[i].enableDebug((_debugLegMask & mask) == mask);
             _legs[i].move(_vMov, _vRot);
         }
-        _gait = new GaitTrot();
+        _gait = new GaitWave();
         println("-----------------------");
     }
 
@@ -233,7 +277,9 @@ class HexaPod {
         translate(_vBodyPos.x, _vBodyPos.y, _vBodyPos.z + _vMov.z);
         rotateX(radians(_vRot.x));
         rotateY(radians(_vRot.y));
-        rotateZ(radians(_vRot.z));
+        if (!_isWalk) {
+            rotateZ(radians(_vRot.z));
+        }
         strokeWeight(15);
         stroke(kCOLOR_BODY);
         noFill();
@@ -246,54 +292,52 @@ class HexaPod {
         noStroke();
 
         // legs
-        for (int i = 0; i < _debug_legs; i++) { //_legs.length; i++) {
+        for (int i = 0; i < _legs.length; i++) {
             _legs[i].draw();
         }
-
         popMatrix();
     }
 
     PVector getPos() {
-        return (_debug == 2) ? _vMov : _vBodyPos;
+        return _vMov;
     }
 
     PVector getRot() {
         return _vRot;
     }
 
-    void update() {
-        println("_vBodyPos = " + _vBodyPos.toString());
+    void update(boolean isWalk) {
+        //println("_vBodyPos = " + _vBodyPos.toString());
         println("_vMov     = " + _vMov.toString());
         println("_vRot     = " + _vRot.toString());
-        for (int i = 0; i < _debug_legs; i++) {
-            if (_debug == 2)
+
+        _isWalk = isWalk;
+        if (isWalk) {
+            int    sign;
+            float  yaw = _vRot.z;
+            
+            for (int i = 0; i < _legs.length; i++) {
+                sign = (i < 3) ? 1 : -1;
+                PVector dir = new PVector(
+                    Gait.kPRECISION + _vMov.x + ((yaw / 8) *  sign), 
+                    Gait.kPRECISION + _vMov.y + ((yaw / 8) * -sign), 
+                    _vMov.z);
+    
+                PVector vMove = _gait.doStep(i, 60, dir, _vRot);
+                if (_legs[i].isDebugEnabled()) {
+                    println(String.format("dir    leg:%d, %6.1f, %6.1f, %6.1f", i, dir.x, dir.y, dir.z));
+                    println(String.format("movpos leg:%d, %6.1f, %6.1f, %6.1f", i, vMove.x, vMove.y, vMove.z));
+                }
+                _legs[i].move(vMove, _vRot);
+            }
+            
+            _vRot.z = yaw;
+        } else {
+            for (int i = 0; i < _legs.length; i++) {
                 _legs[i].move(_vMov, _vRot);
-            else
-                _legs[i].moveBody(_vBodyPos, _vRot);
+                //    _legs[i].moveBody(_vBodyPos, _vRot);
+            }
         }
         println("-----------------------");
-    }
-
-
-    //final static float kTBL_LEG_SIGN[][] = {
-    //    {  1, 1 }, 
-    //    {  1, 0 }, 
-    //    {  1, -1 }, 
-    //    { -1, -1 }, 
-    //    { -1, 0 }, 
-    //    { -1, 1 }
-    //};    
-
-    void walk() {
-        for (int i = 0; i < 3; i++) { //_legs.length; i++) {
-            PVector dir = new PVector(
-                Gait.kPRECISION - _vMov.x + _vRot.z * kTBL_LEG_SIGN[i][0], 
-                Gait.kPRECISION - _vMov.y + _vRot.z * kTBL_LEG_SIGN[i][0], 
-                _vMov.z);
-
-            PVector vMove = _gait.doStep(i, 60, dir, _vRot, 1); //kTBL_LEG_SIGN[i][0]);
-            println(String.format("movpos leg:0, %6.1f, %6.1f, %6.1f", vMove.x, vMove.y, vMove.z));
-            _legs[i].move(vMove, _vRot);
-        }
     }
 }

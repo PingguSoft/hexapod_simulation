@@ -26,7 +26,7 @@ class CamCtrl {
     
     void init() {
         _eye.set(0, 0, (height / 2.0) / tan(radians(30)));
-        move(1);
+        move(3);
     }
     
     void move(int idx) {
@@ -140,9 +140,8 @@ class CamCtrl {
     }    
 }
 
-CamCtrl _cam = new CamCtrl();
-
-
+CamCtrl _cam    = new CamCtrl();
+boolean _isWalk = false;
 
 static final float kBodyFrontWidth  = 90;
 static final float kBodyHeight      = 124;
@@ -178,10 +177,11 @@ void draw() {
     _cam.apply();
     background(0);
     drawPlane(_origin.x, _origin.y, _origin.z, 5000, 5000);
+    if (_isWalk) {
+        _hexapod.update(_isWalk);
+    }
     _hexapod.draw();
 }
-
-
 
 void keyPressed() {
     if (_cam.process(key))
@@ -230,11 +230,11 @@ void keyPressed() {
         break;
         
     case 'w':
-        _hexapod.getPos().y--;
+        _hexapod.getPos().y++;
         break;
         
     case 's':
-        _hexapod.getPos().y++;
+        _hexapod.getPos().y--;
         break;
         
     case 'a':
@@ -246,9 +246,23 @@ void keyPressed() {
         break;
         
     case ' ':
-        _hexapod.walk();
+        _isWalk = !_isWalk;
+        print(String.format("Waling mode:%d\n", int(_isWalk)));
+        break;
+        
+    case '=':
+        _hexapod._gait.setStepsPerSec(_hexapod._gait.getStepsPerSec() + 1);
+        print(String.format("Steps Per Sec:%f\n", _hexapod._gait.getStepsPerSec()));
+        break;
+        
+    case '-':
+        if (_hexapod._gait.getStepsPerSec() > 1) {
+            _hexapod._gait.setStepsPerSec(_hexapod._gait.getStepsPerSec() - 1);
+            print(String.format("Steps Per Sec:%f\n", _hexapod._gait.getStepsPerSec()));
+        }
+        
         break;
     }
-    _hexapod.update();
+    _hexapod.update(_isWalk);
     //print(String.format("P%s R%s\n", _hexapod.getPos().toString(), _hexapod.getRot().toString()));
 }
