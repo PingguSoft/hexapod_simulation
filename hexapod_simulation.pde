@@ -1,27 +1,27 @@
 boolean   _isCamLog = false;
-PVector   _origin;
+Vector   _origin;
 HexaPod   _hexapod;
 
 class CamCtrl {
     int        _mode;
-    PVector    _eye;
-    PVector    _center;
-    PVector    _up;
-    PVector    _rot;
+    Vector    _eye;
+    Vector    _center;
+    Vector    _up;
+    Vector    _rot;
 
-    PVector  _tblCamFix[][] = {
-        { new PVector(   0,   0, 400), new PVector( 0, 0, 0), new PVector(0, 0, 0) },     // up
-        { new PVector(   0, 400,   0), new PVector(10, 0, 0), new PVector(-90, 0,  90) }, // right
-        { new PVector(   0, 400,   0), new PVector(10, 0, 0), new PVector(-90, 0, -90) }, // left
-        { new PVector(-200, 400,   0), new PVector(10, 0, 0), new PVector(-90, 0,   0) }, // back
+    Vector  _tblCamFix[][] = {
+        { new Vector(   0,   0, 400), new Vector( 0, 0, 0), new Vector(0, 0, 0) },     // up
+        { new Vector(   0, 400,   0), new Vector(10, 0, 0), new Vector(-90, 0,  90) }, // right
+        { new Vector(   0, 400,   0), new Vector(10, 0, 0), new Vector(-90, 0, -90) }, // left
+        { new Vector(-200, 400,   0), new Vector(10, 0, 0), new Vector(-90, 0,   0) }, // back
     };
     
     CamCtrl() {
         _mode   = 0;
-        _eye    = new PVector();
-        _center = new PVector(0, 0, 0);
-        _up     = new PVector(0, 1, 0);
-        _rot    = new PVector(0, 0, 0);
+        _eye    = new Vector();
+        _center = new Vector(0, 0, 0);
+        _up     = new Vector(0, 1, 0);
+        _rot    = new Vector(0, 0, 0);
     }
     
     void init() {
@@ -49,7 +49,7 @@ class CamCtrl {
     
     boolean process(int key) {
         boolean ret = true;
-        PVector   v = _eye;
+        Vector   v = _eye;
         
         //print(String.format("keyCode:%d, key:%d\n", keyCode, key));
         
@@ -158,7 +158,7 @@ void setup() {
     frameRate(30);
     _cam.init();
 
-    _origin  = new PVector(width / 2, height / 2, 0);
+    _origin  = new Vector(width / 2, height / 2, 0);
     _hexapod = new HexaPod(kBodyFrontWidth, kBodyHeight, kBodyMiddleWidth, kCoxaLength, kFemurLength, kTibiaLength);
     //_hexapod = new HexaPod(kBodyWidth, kCoxaLength, kFemurLength, kTibiaLength);
 }
@@ -189,27 +189,27 @@ void keyPressed() {
     
     switch (key) {
     case 'j':
-        _hexapod.getRot().y--;
+        _hexapod.getRot().roll--;
         break;
 
     case 'l':
-        _hexapod.getRot().y++;
+        _hexapod.getRot().roll++;
         break;
 
     case 'i':
-        _hexapod.getRot().x++;
+        _hexapod.getRot().pitch++;
         break;
 
     case 'k':
-        _hexapod.getRot().x--;
+        _hexapod.getRot().pitch--;
         break;        
 
     case 'u':
-        _hexapod.getRot().z--;
+        _hexapod.getRot().yaw--;
         break;
 
     case 'o':
-        _hexapod.getRot().z++;
+        _hexapod.getRot().yaw++;
         break;
 
     case 'p':

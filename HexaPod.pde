@@ -19,9 +19,9 @@ class Leg {
     float _femurLength;
     float _tibiaLength;
 
-    PVector _vOffFromCenter = new PVector();
-    PVector _vInitPos       = new PVector();
-    PVector _vPos           = new PVector();
+    Vector _vOffFromCenter = new Vector();
+    Vector _vInitPos       = new Vector();
+    Vector _vPos           = new Vector();
     float  _fCoxaOffset;    
     
     float _angleCoxa;
@@ -101,7 +101,7 @@ class Leg {
         _vInitPos.z = roundUp(tibiaLength);
 
         _vPos.set(_vInitPos);
-        if (_isDebug) {
+        if (true) { //_isDebug) {
             println(String.format("init   leg:%d, angle:%6.1f, off from center (%6.1f, %6.1f)", pos, 
                 _fCoxaOffset, _vOffFromCenter.x, _vOffFromCenter.y));
             println(String.format("init   leg:%d, %6.1f, %6.1f, %6.1f", pos, 
@@ -109,22 +109,22 @@ class Leg {
         }
     }
 
-    PVector bodyIK(PVector vMov, PVector vRot) {
+    Vector bodyIK(Vector vMov, Rotator rRot) {
         // body ik
         float totX    = _vInitPos.x + _vOffFromCenter.x + vMov.x;
         float totY    = _vInitPos.y + _vOffFromCenter.y + vMov.y;
 
         // yaw
         float alpha_0 = atan2(totY, totX);
-        float alpha_1 = alpha_0 + radians(vRot.z);
+        float alpha_1 = alpha_0 + radians(rRot.yaw);
 
         float dist   = sqrt(sq(totX) + sq(totY));
         float bodyIKX = roundUp(cos(alpha_1) * dist - totX);
         float bodyIKY = roundUp(sin(alpha_1) * dist - totY);
 
         // pitch, roll
-        float rollZ  = tan(radians(vRot.y)) * totX;
-        float pitchZ = tan(radians(vRot.x)) * totY;
+        float rollZ  = tan(radians(rRot.roll)) * totX;
+        float pitchZ = tan(radians(rRot.pitch)) * totY;
         float bodyIKZ = roundUp(rollZ + pitchZ);
 
         //float rot = radians(yaw);
@@ -143,7 +143,7 @@ class Leg {
         return _vPos;
     }
 
-    void legIK(PVector tgt) {
+    void legIK(Vector tgt) {
         float distFoot   = sqrt(sq(tgt.x) + sq(tgt.y));
         float diagonal   = sqrt(sq(distFoot - _coxaLength) + sq(tgt.z)); 
         float a1         = acos(tgt.z / diagonal); //atan((distFoot - _coxaLength) / tgt.z);
@@ -169,17 +169,17 @@ class Leg {
         }
     }
 
-    void move(PVector vMov, PVector vRot) {
-        PVector tgt = bodyIK(vMov, vRot);
+    void move(Vector vMov, Rotator rRot) {
+        Vector tgt = bodyIK(vMov, rRot);
         legIK(tgt);
     }
 
 /*
-    void moveBody(PVector vMov, PVector vRot) {
+    void moveBody(Vector vMov, Vector rRot) {
         println(String.format("pos    leg:%d, %6.1f, %6.1f, %6.1f", _pos, _vPos.x, _vPos.y, _vPos.z));
 
         // inverted Y
-        PVector tgt = new PVector(_vPos.x - vMov.x, _vPos.y + vMov.y, _vPos.z + vMov.z);
+        Vector tgt = new Vector(_vPos.x - vMov.x, _vPos.y + vMov.y, _vPos.z + vMov.z);
         println(String.format("distmv leg:%d, %6.1f, %6.1f, %6.1f", _pos, tgt.x, tgt.y, tgt.z));
 
         //float y = tgt.y * cos(a) - tgt.z * sin(a);
@@ -187,8 +187,8 @@ class Leg {
         //tgt.y = y; //_vPos.y + (y - tgt.y) * 2;
         //tgt.z = tgt.z + (z - tgt.z) * 2;
 
-        float p = tan(radians(-vRot.x)) * tgt.y;
-        float r = tan(radians(-vRot.y)) * tgt.x;
+        float p = tan(radians(-rRot.x)) * tgt.y;
+        float r = tan(radians(-rRot.y)) * tgt.x;
         
         tgt.z = tgt.z + (p + r) * 2;
         println(String.format("newpos leg:%d, %6.1f, %6.1f, %6.1f\n", _pos, tgt.x, tgt.y, tgt.z));
@@ -245,9 +245,9 @@ class Leg {
 
 class HexaPod {
     Leg       _legs[];
-    PVector   _vBodyPos;
-    PVector   _vMov;
-    PVector   _vRot;    // x-> pitch, y->roll, z->yaw
+    Vector   _vBodyPos;
+    Vector   _vMov;
+    Rotator  _rRot;    // x-> pitch, y->roll, z->yaw
     Gait      _gait;
     boolean   _isWalk;
 
@@ -255,9 +255,9 @@ class HexaPod {
 
     HexaPod(float bodyFrontWidth, float bodyHeight, float bodyMiddleWidth, float coxaLen, float femurLen, float tibiaLen) {
         _legs      = new Leg[6];
-        _vBodyPos  = new PVector(0, 0, 0);
-        _vMov      = new PVector(0, 0, 0);
-        _vRot      = new PVector(0, 0, 0);
+        _vBodyPos  = new Vector(0, 0, 0);
+        _vMov      = new Vector(0, 0, 0);
+        _rRot      = new Rotator(0, 0, 0);
         _debugLegMask = (1 << 3);
 
         int mask;
@@ -265,9 +265,9 @@ class HexaPod {
             mask = 1 << i;
             _legs[i] = new Leg(i, bodyFrontWidth, bodyHeight, bodyMiddleWidth, coxaLen, femurLen, tibiaLen);
             _legs[i].enableDebug((_debugLegMask & mask) == mask);
-            _legs[i].move(_vMov, _vRot);
+            _legs[i].move(_vMov, _rRot);
         }
-        _gait = new GaitWave();
+        _gait = new GaitRipple();
         println("-----------------------");
     }
 
@@ -275,10 +275,10 @@ class HexaPod {
         // body
         pushMatrix();
         translate(_vBodyPos.x, _vBodyPos.y, _vBodyPos.z + _vMov.z);
-        rotateX(radians(_vRot.x));
-        rotateY(radians(_vRot.y));
+        rotateX(radians(_rRot.pitch));
+        rotateY(radians(_rRot.roll));
         if (!_isWalk) {
-            rotateZ(radians(_vRot.z));
+            rotateZ(radians(_rRot.yaw));
         }
         strokeWeight(15);
         stroke(kCOLOR_BODY);
@@ -298,44 +298,44 @@ class HexaPod {
         popMatrix();
     }
 
-    PVector getPos() {
+    Vector getPos() {
         return _vMov;
     }
 
-    PVector getRot() {
-        return _vRot;
+    Rotator getRot() {
+        return _rRot;
     }
 
     void update(boolean isWalk) {
         //println("_vBodyPos = " + _vBodyPos.toString());
-        println("_vMov     = " + _vMov.toString());
-        println("_vRot     = " + _vRot.toString());
+        _vMov.dump("_vMov");
+        _rRot.dump("_rRot");
 
         _isWalk = isWalk;
         if (isWalk) {
             int    sign;
-            float  yaw = _vRot.z;
+            float  yaw = _rRot.yaw;
             
             for (int i = 0; i < _legs.length; i++) {
                 sign = (i < 3) ? 1 : -1;
-                PVector dir = new PVector(
+                Vector dir = new Vector(
                     Gait.kPRECISION + _vMov.x + ((yaw / 8) *  sign), 
                     Gait.kPRECISION + _vMov.y + ((yaw / 8) * -sign), 
                     _vMov.z);
     
-                PVector vMove = _gait.doStep(i, 60, dir, _vRot);
+                Vector vMove = _gait.doStep(i, 60, dir, _rRot);
                 if (_legs[i].isDebugEnabled()) {
                     println(String.format("dir    leg:%d, %6.1f, %6.1f, %6.1f", i, dir.x, dir.y, dir.z));
                     println(String.format("movpos leg:%d, %6.1f, %6.1f, %6.1f", i, vMove.x, vMove.y, vMove.z));
                 }
-                _legs[i].move(vMove, _vRot);
+                _legs[i].move(vMove, _rRot);
             }
             
-            _vRot.z = yaw;
+            _rRot.yaw = yaw;
         } else {
             for (int i = 0; i < _legs.length; i++) {
-                _legs[i].move(_vMov, _vRot);
-                //    _legs[i].moveBody(_vBodyPos, _vRot);
+                _legs[i].move(_vMov, _rRot);
+                //    _legs[i].moveBody(_vBodyPos, _rRot);
             }
         }
         println("-----------------------");

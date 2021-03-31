@@ -2,12 +2,12 @@ public abstract class Gait {
     public final static float kUNIT_MM   = 1f;
     public final static float kPRECISION = 0.1f;
 
-    protected PVector   _vecStep;
+    protected Vector    _vecStep;
     protected float     _stepsPerSec;
     protected GaitParam _paramLegs[] = new GaitParam[6];
     
     public Gait(float stanceRate) {
-        _vecStep     = new PVector(20, 20, 10);
+        _vecStep     = new Vector(20, 20, 10);
         _stepsPerSec = 1f;
         
         for (int i = 0; i < _paramLegs.length; i++) {
@@ -15,8 +15,8 @@ public abstract class Gait {
         }
     }
 
-    public void    setStep(PVector vecStep)                           { _vecStep = vecStep;         }
-    public PVector getStep()                                          { return _vecStep;            }
+    public void    setStep(Vector vecStep)                            { _vecStep = vecStep;         }
+    public Vector  getStep()                                          { return _vecStep;            }
     public void    setStepsPerSec(float steps)                        { _stepsPerSec = steps;       }
     public float   getStepsPerSec()                                   { return _stepsPerSec;        }
     
@@ -26,19 +26,19 @@ public abstract class Gait {
         }
     }
     
-    protected PVector calcDirRatio(PVector dir) {
+    protected Vector calcDirRatio(Vector dir) {
         float maxV = max(abs(dir.x), abs(dir.y));
-        return new PVector(dir.x / maxV, dir.y / maxV);
+        return new Vector(dir.x / maxV, dir.y / maxV, dir.z);
     }
     
-    public PVector doStep(int leg, float freq, PVector dir, PVector rot) {
+    public Vector doStep(int leg, float freq, Vector dir, Rotator rot) {
         if (abs(dir.x) == kPRECISION && abs(dir.y) == kPRECISION) {
-            return new PVector(0.0f, 0.0f, dir.z);
+            return new Vector(0.0f, 0.0f, dir.z);
         }
 
         _paramLegs[leg].tick(dir, _vecStep, freq, _stepsPerSec);
-        PVector rDir = calcDirRatio(dir);
-        PVector c = new PVector(rDir.x * _paramLegs[leg].getAmplitude(), rDir.y * _paramLegs[leg].getAmplitude(), dir.z);
+        Vector rDir = calcDirRatio(dir);
+        Vector c = new Vector(rDir.x * _paramLegs[leg].getAmplitude(), rDir.y * _paramLegs[leg].getAmplitude(), dir.z);
         
         if (_paramLegs[leg].isSwingState()) {
             float w0 = _vecStep.x * Gait.kUNIT_MM / 2 * dir.x;
@@ -53,7 +53,7 @@ public abstract class Gait {
         print(String.format("tick:%3d, amplitude:%6.1f, swing:%d, (%6.1f, %6.1f)\n", _paramLegs[leg].getTick(), 
             _paramLegs[leg].getAmplitude(), int(_paramLegs[leg].isSwingState()), c.x, c.z));
     
-        return new PVector(c.x / Gait.kUNIT_MM, c.y / Gait.kUNIT_MM, c.z / Gait.kUNIT_MM);
+        return new Vector(c.x / Gait.kUNIT_MM, c.y / Gait.kUNIT_MM, c.z / Gait.kUNIT_MM);
     }
     
     abstract public String getName();    
@@ -94,7 +94,7 @@ public class GaitParam {
         }
     }
     
-    protected void tick(PVector dir, PVector step, float freq, float stepsPerSec) {
+    protected void tick(Vector dir, Vector step, float freq, float stepsPerSec) {
         float w0 = step.x * Gait.kUNIT_MM / (2 / max(abs(dir.x), abs(dir.y)));
         float a0 = (w0 * 2) * (float(_tick) / round((freq * _fCurMult) / stepsPerSec)) - w0;
 
